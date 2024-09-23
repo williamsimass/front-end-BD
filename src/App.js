@@ -1,39 +1,13 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import { LaptopOutlined, NotificationOutlined, UserOutlined } from '@ant-design/icons';
-import { Breadcrumb, Layout, Menu, theme, Input, Button, Checkbox, Row, Col } from 'antd';
+import { Breadcrumb, Layout, Menu, theme, Input, Button, Upload, Table, message, Row, Col } from 'antd';
+import { UploadOutlined, FileExcelOutlined } from '@ant-design/icons';
+import * as XLSX from 'xlsx';
 import BasicSearch from './pages/BasicSearch';
 import FullSearch from './pages/FullSearch';
 
 const { Header, Content, Sider } = Layout;
-
-// Component to handle filters
-const Filters = ({ filters, setFilters }) => {
-  const handleCheckboxChange = (filter) => {
-    setFilters((prevFilters) => ({
-      ...prevFilters,
-      [filter]: !prevFilters[filter],
-    }));
-  };
-
-  return (
-    <div style={{ padding: '16px', backgroundColor: '#f0f2f5', borderRadius: '8px' }}>
-      <h3>Filtros</h3>
-      <Row gutter={[16, 16]}>
-        {Object.keys(filters).map((filterKey) => (
-          <Col span={8} key={filterKey}>
-            <Checkbox
-              checked={filters[filterKey]}
-              onChange={() => handleCheckboxChange(filterKey)}
-            >
-              {filterKey}
-            </Checkbox>
-          </Col>
-        ))}
-      </Row>
-    </div>
-  );
-};
 
 const App = () => {
   const {
@@ -42,27 +16,81 @@ const App = () => {
 
   const [processNumber, setProcessNumber] = useState('');
   const [filtered, setFiltered] = useState(false);
-  const [filters, setFilters] = useState({
-    'Quantas vezes o mesmo autor entrou com processos contra nosso cliente?': false,
-    'Quantos processos de autor falecido vieram após seu falecimento? E quais processos são esses?': false,
-    'Quantos falecimentos ocorreram no decurso do processo?': false,
-    'Quais comarcas mais têm processos de monitorados?': false,
-    'Quantas vezes a mesma testemunha está presente na procuração?': false,
-    'Quantas vezes a justiça gratuita foi indeferida?': false,
-    'Quantos autores são analfabetos?': false,
-    'Quantas vezes o mesmo nome de terceiro aparece nos comprovantes de residência?': false,
-    'Quantos não têm comprovante de residência?': false,
-    'Quantos foram julgados por litigância de má fé?': false,
-    'Quantos tiveram ofícios enviados à OAB/ Autoridades policiais / núcleos de monitoramento?': false,
-    'Qual o principal subtipo de ação?': false,
-    'Quantas petições foram genéricas?': false,
-    'Quantos processos suspeitos de fraude são encerrados por acordo?': false,
-  });
+  const [data, setData] = useState([]);
+  const [columns, setColumns] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
 
-  const [showFilters, setShowFilters] = useState(false);
+  // Função que trata o upload e leitura do arquivo Excel
+  const handleFileUpload = (file) => {
+    const reader = new FileReader();
 
-  const handleSearch = () => {
-    setFiltered(true);
+    reader.onload = (event) => {
+      const binaryStr = event.target.result;
+      const workbook = XLSX.read(binaryStr, { type: 'binary' });
+
+      // Pegue a primeira planilha
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+
+      // Converte para JSON
+      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+      if (jsonData.length) {
+        // A primeira linha será tratada como cabeçalho para as colunas
+        const headers = jsonData[0].map((header) => ({
+          title: header,
+          dataIndex: header,
+          key: header,
+        }));
+
+        // O restante são os dados
+        const tableData = jsonData.slice(1).map((row, index) => {
+          const rowData = {};
+          headers.forEach((header, i) => {
+            rowData[header.dataIndex] = row[i] || '';
+          });
+          return { key: index, ...rowData };
+        });
+
+        setColumns(headers);
+        setData(tableData);
+        setFilteredData(tableData); // Inicializa o dado filtrado com os dados originais
+      }
+    };
+
+    reader.readAsBinaryString(file);
+    return false; // Previne o comportamento padrão de upload
+  };
+
+  // Função de busca por palavra-chave nos dados da planilha
+  const handleSearchKeyword = (keyword) => {
+    const filtered = data.filter((row) =>
+      Object.values(row).some((cell) =>
+        String(cell).toLowerCase().includes(keyword.toLowerCase())
+      )
+    );
+
+    if (filtered.length) {
+      setFilteredData(filtered);
+      message.success(`Foram encontradas ${filtered.length} correspondências!`);
+    } else {
+      setFilteredData([]);
+      message.warning('Nenhuma correspondência encontrada.');
+    }
+  };
+
+  // Função para gerar o relatório Excel com os dados filtrados
+  const handleExportExcel = () => {
+    if (filteredData.length === 0) {
+      message.warning('Nenhum dado para exportar.');
+      return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(filteredData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Dados Filtrados');
+    XLSX.writeFile(workbook, 'RelatorioFiltrado.xlsx');
+    message.success('Relatório exportado com sucesso!');
   };
 
   return (
@@ -70,7 +98,12 @@ const App = () => {
       <Layout>
         <Header style={{ display: 'flex', alignItems: 'center' }}>
           <div className="demo-logo" />
-          <Menu theme="dark" mode="horizontal" defaultSelectedKeys={['1']} style={{ flex: 1, minWidth: 0 }}>
+          <Menu
+            theme="dark"
+            mode="horizontal"
+            defaultSelectedKeys={['1']}
+            style={{ flex: 1, minWidth: 0 }}
+          >
             <Menu.Item key="1">
               <Link to="/">Consulta Básica</Link>
             </Menu.Item>
@@ -87,11 +120,19 @@ const App = () => {
                 value={processNumber}
                 onChange={(e) => setProcessNumber(e.target.value)}
               />
-              <Button type="primary" onClick={handleSearch} style={{ marginTop: '8px' }}>
+              <Button
+                type="primary"
+                onClick={() => setFiltered(true)}
+                style={{ marginTop: '8px', width: '100%' }}
+              >
                 Consultar
               </Button>
             </div>
-            <Menu mode="inline" defaultSelectedKeys={['sub1']} style={{ height: '100%', borderRight: 0 }}>
+            <Menu
+              mode="inline"
+              defaultSelectedKeys={['sub1']}
+              style={{ height: '100%', borderRight: 0 }}
+            >
               <Menu.Item key="sub1" icon={<UserOutlined />} disabled={!filtered}>
                 Autores
               </Menu.Item>
@@ -108,18 +149,6 @@ const App = () => {
               <Breadcrumb.Item>Home</Breadcrumb.Item>
             </Breadcrumb>
 
-            {/* Toggle Filters Button */}
-            <Button
-              type="default"
-              onClick={() => setShowFilters(!showFilters)}
-              style={{ margin: '16px 0' }}
-            >
-              {showFilters ? 'Ocultar Filtros' : 'Mostrar Filtros'}
-            </Button>
-
-            {/* Filters Section */}
-            {showFilters && <Filters filters={filters} setFilters={setFilters} />}
-
             <Content
               style={{
                 padding: 24,
@@ -129,14 +158,52 @@ const App = () => {
                 borderRadius: borderRadiusLG,
               }}
             >
-              <Routes>
-                <Route path="/" element={<BasicSearch processNumber={processNumber} filtered={filtered} />} />
-                <Route path="/full" element={<FullSearch processNumber={processNumber} filtered={filtered} />} />
-              </Routes>
+              {/* Upload, Campo de busca e Botão de Exportação */}
+              <Row gutter={[16, 16]} align="middle">
+                <Col xs={24} sm={12} md={8} lg={6}>
+                  <Upload
+                    beforeUpload={handleFileUpload}
+                    accept=".xlsx, .xls"
+                    showUploadList={false}
+                  >
+                    <Button icon={<UploadOutlined />}>Upload Excel</Button>
+                  </Upload>
+                </Col>
+                <Col xs={24} sm={12} md={8} lg={10}>
+                  <Input.Search
+                    placeholder="Buscar palavra-chave"
+                    enterButton="Buscar"
+                    onSearch={handleSearchKeyword}
+                    allowClear
+                  />
+                </Col>
+                <Col xs={24} sm={24} md={8} lg={8}>
+                  <Button
+                    icon={<FileExcelOutlined />}
+                    type="primary"
+                    onClick={handleExportExcel}
+                    block
+                  >
+                    Gerar Relatório
+                  </Button>
+                </Col>
+              </Row>
+
+              {/* Exibição dos dados da planilha em uma tabela com Paginação */}
+              <Table
+                columns={columns}
+                dataSource={filteredData}
+                pagination={{ pageSize: 10, showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'] }}
+                style={{ marginTop: '16px' }}
+              />
             </Content>
           </Layout>
         </Layout>
       </Layout>
+      <Routes>
+        <Route path="/" element={<BasicSearch processNumber={processNumber} filtered={filtered} />} />
+        <Route path="/full" element={<FullSearch processNumber={processNumber} filtered={filtered} />} />
+      </Routes>
     </Router>
   );
 };
