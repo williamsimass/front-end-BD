@@ -113,18 +113,18 @@ const App = () => {
           </Menu>
         </Header>
         <Layout>
-          <Sider width={200} style={{ background: colorBgContainer }}>
+          <Sider width={200} style={{ background: colorBgContainer }} disabled={true}>
             <div style={{ padding: '16px' }}>
-              <Input
+              <Input 
                 placeholder="Número do processo"
                 value={processNumber}
                 onChange={(e) => setProcessNumber(e.target.value)}
-              />
+                disabled={true}/>
               <Button
                 type="primary"
                 onClick={() => setFiltered(true)}
                 style={{ marginTop: '8px', width: '100%' }}
-              >
+                disabled={true}>
                 Consultar
               </Button>
             </div>
@@ -133,14 +133,14 @@ const App = () => {
               defaultSelectedKeys={['sub1']}
               style={{ height: '100%', borderRight: 0 }}
             >
-              <Menu.Item key="sub1" icon={<UserOutlined />} disabled={!filtered}>
-                Autores
+              <Menu.Item key="sub1" icon={<UserOutlined />} disabled={true}>
+                Indisponivel
               </Menu.Item>
-              <Menu.Item key="sub2" icon={<LaptopOutlined />} disabled={!filtered}>
-                Processos
-              </Menu.Item>
-              <Menu.Item key="sub3" icon={<NotificationOutlined />} disabled={!filtered}>
-                Detalhes
+              <Menu.Item key="sub2" icon={<LaptopOutlined />} disabled={true}>
+                Indisponivel
+              </Menu.Item>+
+              <Menu.Item key="sub3" icon={<NotificationOutlined />} disabled={true}>
+                Indisponivel
               </Menu.Item>
             </Menu>
           </Sider>
@@ -159,35 +159,38 @@ const App = () => {
               }}
             >
               {/* Upload, Campo de busca e Botão de Exportação */}
-              <Row gutter={[16, 16]} align="middle">
-                <Col xs={24} sm={12} md={8} lg={6}>
-                  <Upload
-                    beforeUpload={handleFileUpload}
-                    accept=".xlsx, .xls"
-                    showUploadList={false}
-                  >
-                    <Button icon={<UploadOutlined />}>Upload Excel</Button>
-                  </Upload>
-                </Col>
-                <Col xs={24} sm={12} md={8} lg={10}>
-                  <Input.Search
-                    placeholder="Buscar palavra-chave"
-                    enterButton="Buscar"
-                    onSearch={handleSearchKeyword}
-                    allowClear
-                  />
-                </Col>
-                <Col xs={24} sm={24} md={8} lg={8}>
-                  <Button
-                    icon={<FileExcelOutlined />}
-                    type="primary"
-                    onClick={handleExportExcel}
-                    block
-                  >
-                    Gerar Relatório
-                  </Button>
-                </Col>
-              </Row>
+              <Row gutter={[16, 16]} justify="center" align="middle">
+  <Col xs={24} sm={16} md={12} lg={8}>
+    <Upload
+      beforeUpload={handleFileUpload}
+      accept=".xlsx, .xls"
+      showUploadList={false}
+    >
+      <Button icon={<UploadOutlined />}>Upload Excel</Button>
+    </Upload>
+  </Col>
+  <Col xs={24} sm={16} md={12} lg={10}>
+  <Input.Search
+  placeholder="Buscar palavra-chave"
+  enterButton="Buscar"
+  onSearch={handleSearchKeyword}
+  allowClear
+  style={{ borderRadius: '8px' }}
+/>
+
+  </Col>
+  <Col xs={24} sm={16} md={12} lg={6}>
+    <Button
+      icon={<FileExcelOutlined />}
+      type="primary"
+      onClick={handleExportExcel}
+      block
+    >
+      Gerar Relatório
+    </Button>
+  </Col>
+</Row>
+
 
               {/* Exibição dos dados da planilha em uma tabela com Paginação */}
               <Table
