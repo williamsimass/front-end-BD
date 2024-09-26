@@ -15,11 +15,11 @@ const Sidebar = () => (
       <Menu.Item key="1" icon={<UploadOutlined />}>
         <Link to="/">Upload Excel</Link>
       </Menu.Item>
-      <Menu.Item key="2" icon={<LaptopOutlined />} disabled>
-        Em atualização
+      <Menu.Item key="2" icon={<LaptopOutlined />}>
+        <Link to="/feature1">Feature 1</Link> {/* Adicionando link para Feature 1 */}
       </Menu.Item>
-      <Menu.Item key="3" icon={<NotificationOutlined />} disabled>
-        Em atualização
+      <Menu.Item key="3" icon={<NotificationOutlined />}>
+      <Link to="/feature2">Feature 2</Link>
       </Menu.Item>
     </Menu>
   </Sider>
